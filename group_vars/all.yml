@@ -1,0 +1,43 @@
+---
+etcd:
+  hosts:
+    - name: "etcd-host0"
+      ip: 192.168.0.184
+    - name: "etcd-host2"
+      ip: 192.168.0.185
+    - name: "etcd-host3"
+      ip: 192.168.0.186
+  endpoints: "https://192.168.0.184:2379,https://192.168.0.185:2379,https://192.168.0.186:2379"
+  nodes: "etcd-host0=https://192.168.0.184:2380,etcd-host1=https://192.168.0.185:2380,etcd-host2=https://192.168.0.186:2380"
+
+flanneld:
+  docker_opts_path: "/run/flannel/docker"
+  etcd_prefix: "/kubernetes/network"
+
+kubernetes:
+  master: 192.168.0.184
+  api_servers: https://192.168.0.184:6443
+  bootstrap_token: $TOKEN
+  cluster_svc_ip: 10.96.0.1
+  cluster_dns: 10.96.0.2
+  cluster_domain: "cluster.local."
+  cluster_cidr: "10.244.0.0/16"
+  cluster_svc_cidr: "10.96.0.0/16"
+  svc_ip_range: "7000-9000"
+
+files:
+  cfssl: "https://pkg.cfssl.org/R1.2/cfssl_linux-amd64"
+  cfssljson: "https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64"
+  cfssl_certinfo: https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64
+  etcd:
+    url: "https://github.com/coreos/etcd/releases/download/v3.1.6/etcd-v3.1.6-linux-amd64.tar.gz"
+    name: "etcd-v3.1.6-linux-amd64"
+  kubectl:
+    url: "https://dl.k8s.io/v1.6.2/kubernetes-client-linux-amd64.tar.gz"
+    name: "kubernetes-client-linux-amd64"
+  flanneld:
+    url: "https://github.com/coreos/flannel/releases/download/v0.7.1/flannel-v0.7.1-linux-amd64.tar.gz"
+    name: "flannel-v0.7.1-linux-amd64"
+  kube_master:
+    url: "https://dl.k8s.io/v1.6.2/kubernetes-server-linux-amd64.tar.gz"
+    name: "kubernetes-server-linux-amd64"

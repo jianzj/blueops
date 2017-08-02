@@ -1,0 +1,42 @@
+---
+- name: Prepare FLANNELD working dirs
+  file: path="{{ item }}" state=directory
+  with_items:
+  - "/etc/flanneld/ssl"
+  - "/opt/flanneld/bin"
+  - "/etc/kubernetes/ssl"
+
+- name: Prepare FLANNELD binary files
+  copy:
+    src: /opt/kubernetes/flanneld/bin/{{ item }}
+    dest: /opt/flanneld/bin/{{ item }}
+    mode: 0755
+  with_items:
+  - "flanneld"
+  - "mk-docker-opts.sh"
+  
+- name: Prepare FLANNELD key and cert
+  copy:
+    src: /opt/kubernetes/flanneld/ssl/{{ item }}
+    dest: /etc/flanneld/ssl/{{ item }}
+    mode: 0644
+  with_items:
+  - "flanneld-key.pem"
+  - "flanneld.pem"
+
+- name: Modify FLANNELD key permission
+  file: path="/etc/flanneld/ssl/flanneld-key.pem" mode=0600
+
+- name: Prepare FLANNELD systemd unit file
+  template:
+    src: "config/flanneld.service"
+    dest: "/etc/systemd/system/flanneld.service"
+
+- name: Setup FLANNELD service
+  systemd:
+    name: flanneld
+    enabled: yes
+    daemon_reload: yes
+    state: started
+  notify:
+  - "restart flanneld"

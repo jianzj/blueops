@@ -1,0 +1,105 @@
+---
+- name: Create tempary directory to prepare binary files
+  file: 
+    path: /tmp/kubernetes
+    state: directory
+
+# ETCD PART
+- name: Download ETCD binary files
+  get_url: 
+    url: "{{ files.etcd.url }}"
+    dest: "/tmp/kubernetes/{{ files.etcd.name }}.tar.gz"
+  when: bin_file is defined and bin_file == "etcd"
+
+- name: Unarchive ETCD package
+  unarchive:
+    src: "/tmp/kubernetes/{{ files.etcd.name }}.tar.gz"
+    dest: "/tmp/kubernetes"
+  when: bin_file is defined and bin_file == "etcd"
+
+- name: Copy ETCD binaries files to /opt/kubernetes/etcd/bin/
+  copy:
+    src: "/tmp/kubernetes/{{ files.etcd.name }}/{{ item }}"
+    dest: "/opt/kubernetes/etcd/bin/{{ item }}"
+    mode: 0775
+  with_items:
+    - "etcd"
+    - "etcdctl"
+  when: bin_file is defined and bin_file == "etcd"
+
+# KUBECTL PART
+- name: Download KUBECTL binary files
+  get_url:
+    url: "{{ files.kubectl.url }}"
+    dest: "/tmp/kubernetes/{{ files.kubectl.name }}.tar.gz"
+  when: bin_file is defined and bin_file == "kubectl"
+
+- name: Unarchive KUBECTL package
+  unarchive:
+    src: "/tmp/kubernetes/{{ files.kubectl.name }}.tar.gz"
+    dest: "/tmp/kubernetes"
+  when: bin_file is defined and bin_file == "kubectl"
+
+- name: Copy KUBECTL binaries files to /opt/kubernetes/kubectl/bin/
+  copy:
+    src: "/tmp/kubernetes/kubernetes/client/bin/{{ item }}"
+    dest: "/opt/kubernetes/master/bin/{{ item }}"
+    mode: 0775
+  with_items:
+    - "kubectl"
+    - "kubefed"
+  when: bin_file is defined and bin_file == "kubectl"
+
+# FLANNELD PART
+- name: Download FLANNELD binary files
+  get_url:
+    url: "{{ files.flanneld.url }}"
+    dest: "/tmp/kubernetes/{{ files.flanneld.name }}.tar.gz"
+  when: bin_file is defined and bin_file == "flanneld"
+
+- name: Create FLANNELD tempary directory
+  file:
+    path: /tmp/kubernetes/flanneld
+    state: directory
+  when: bin_file is defined and bin_file == "flanneld"
+
+- name: Unarchive FLANNELD package
+  unarchive:
+    src: "/tmp/kubernetes/{{ files.flanneld.name }}.tar.gz"
+    dest: "/tmp/kubernetes"
+  when: bin_file is defined and bin_file == "flanneld"
+
+- name: Copy FLANNELD binaries files to /opt/kubernetes/flanneld/bin/
+  copy:
+    src: "/tmp/kubernetes/flanneld/{{ item }}"
+    dest: "/opt/kubernetes/flanneld/bin/{{ item }}"
+    mode: 0775
+  with_items:
+    - "flanneld"
+    - "mk-docker-opts.sh"
+  when: bin_file is defined and bin_file == "flanneld"
+
+# MASTER PART
+- name: Download MASTER binary files
+  get_url:
+    url: "{{ files.kube_master.url }}"
+    dest: "/tmp/kubernetes/{{ files.kube_master.name }}.tar.gz"
+  when: bin_file is defined and bin_file == "kube_master"
+
+- name: Unarchive MASTER package
+  unarchive:
+    src: "/tmp/kubernetes/{{ files.kube_master.name }}.tar.gz"
+    dest: "/tmp/kubernetes"
+  when: bin_file is defined and bin_file == "kube_master"
+
+- name: Copy MASTER binaries files to /opt/kubernetes/master/bin/
+  copy:
+    src: "/tmp/kubernetes/kubernetes/server/bin/{{ item }}"
+    dest: "/opt/kubernetes/master/bin/{{ item }}"
+    mode: 0775
+  with_items:
+    - "kube-apiserver"
+    - "kube-controller-manager"
+    - "kube-scheduler"
+  when: bin_file is defined and bin_file == "kube_master"
+  

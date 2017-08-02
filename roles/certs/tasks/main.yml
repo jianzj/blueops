@@ -1,0 +1,118 @@
+---
+# CA PART
+- name: Generate CA csr
+  template:
+    src: csr/ca-csr.json
+    dest: /opt/kubernetes/ca/ssl/ca-csr.json
+  when: gen_certs_for is defined and gen_certs_for == 'ca'
+
+- name: Generate CA key and cert
+  shell: "cfssl gencert -initca /opt/kubernetes/ca/ssl/ca-csr.json | cfssljson -bare ca"
+  args:
+    executable: /bin/bash
+  when: gen_certs_for is defined and gen_certs_for == 'ca'
+
+- name: Copy CA key, cert to /opt/kubernetes/ca/ssl
+  copy:
+    src: "{{ item }}"
+    dest: "/opt/kubernetes/ca/ssl/{{ item }}"
+  with_items:
+  - "ca-key.pem"
+  - "ca.pem"
+  when: gen_certs_for is defined and gen_certs_for == 'ca'
+
+- name: Copy CA config to /opt/kubernetes/ca/ssl
+  template:
+    src: config/ca-config.json
+    dest: /opt/kubernetes/ca/ssl/ca-config.json
+  when: gen_certs_for is defined and gen_certs_for == 'ca'
+
+# ETCD PART
+- name: Generate ETCD csr
+  template:
+    src: csr/etcd-csr.json
+    dest: "/opt/kubernetes/etcd/ssl/etcd-csr.json"
+  when: gen_certs_for is defined and gen_certs_for == 'etcd'
+
+- name: Copy script generate_certs.sh to /opt/kubernetes/etcd/bin
+  template:
+    src: scripts/generate_certs.sh
+    dest: /opt/kubernetes/etcd/bin/generate_certs.sh
+    mode: 0755
+  when: gen_certs_for is defined and gen_certs_for == 'etcd'
+
+- name: Generate ETCD key and cert
+  shell: "/opt/kubernetes/etcd/bin/generate_certs.sh etcd"
+  args:
+    executable: /bin/bash
+  when: gen_certs_for is defined and gen_certs_for == 'etcd'
+
+# FLANNELD PART
+- name: Generate FLANNELD csr
+  template:
+    src: csr/flanneld-csr.json
+    dest: /opt/kubernetes/flanneld/ssl/flanneld-csr.json
+  when: gen_certs_for is defined and gen_certs_for == 'flanneld'
+
+- name: Generate FLANNELD key and cert
+  shell: "{{ item }}"
+  args:
+    executable: /bin/bash
+  with_items:
+    - "cfssl gencert -ca=/opt/kubernetes/ca/ssl/ca.pem -ca-key=/opt/kubernetes/ca/ssl/ca-key.pem -config=/opt/kubernetes/ca/ssl/ca-config.json -profile=kubernetes /opt/kubernetes/flanneld/ssl/flanneld-csr.json | cfssljson -bare flanneld"
+    - "mv flanneld-key.pem /opt/kubernetes/flanneld/ssl/flanneld-key.pem"
+    - "mv flanneld.pem /opt/kubernetes/flanneld/ssl/flanneld.pem"
+  when: gen_certs_for is defined and gen_certs_for == 'flanneld'
+
+# Kubernetes User admin PART
+- name: Generate User admin csr
+  template:
+    src: csr/admin-csr.json
+    dest: /opt/kubernetes/master/ssl/admin-csr.json
+  when: gen_certs_for is defined and gen_certs_for == 'master'
+
+- name: Generate User admin key and cert
+  shell: "{{ item }}"
+  args:
+    executable: /bin/bash
+  with_items:
+    - "cfssl gencert -ca=/opt/kubernetes/ca/ssl/ca.pem -ca-key=/opt/kubernetes/ca/ssl/ca-key.pem -config=/opt/kubernetes/ca/ssl/ca-config.json -profile=kubernetes /opt/kubernetes/master/ssl/admin-csr.json | cfssljson -bare admin"
+    - "mv admin-key.pem /opt/kubernetes/master/ssl/admin-key.pem"
+    - "mv admin.pem /opt/kubernetes/master/ssl/admin.pem"
+  when: gen_certs_for is defined and gen_certs_for == 'master'
+
+# Kubernetes MASTER PART
+- name: Generate Kubernetes csr
+  template:
+    src: csr/kubernetes-csr.json
+    dest: /opt/kubernetes/master/ssl/kubernetes-csr.json
+  when: gen_certs_for is defined and gen_certs_for == 'master'
+
+- name: Generate Kubernetes key and cert
+  shell: "{{ item }}"
+  args:
+    executable: /bin/bash
+  with_items:
+    - "cfssl gencert -ca=/opt/kubernetes/ca/ssl/ca.pem -ca-key=/opt/kubernetes/ca/ssl/ca-key.pem -config=/opt/kubernetes/ca/ssl/ca-config.json -profile=kubernetes /opt/kubernetes/master/ssl/kubernetes-csr.json | cfssljson -bare kubernetes"
+    - "mv kubernetes-key.pem /opt/kubernetes/master/ssl/kubernetes-key.pem"
+    - "mv kubernetes.pem /opt/kubernetes/master/ssl/kubernetes.pem"
+  when: gen_certs_for is defined and gen_certs_for == 'master'
+
+# Kubernetes Node PART
+- name: Generate Kubernetes Node csr
+  template:
+    src: csr/kube-proxy-csr.json
+    dest: /opt/kubernetes/node/ssl/kube-proxy-csr.json
+  when: gen_certs_for is defined and gen_certs_for == 'node'
+
+- name: Generate KUBE-PROXY key and cert
+  shell: "{{ item }}"
+  args:
+    executable: /bin/bash
+  with_items:
+    - "cfssl gencert -ca=/opt/kubernetes/ca/ssl/ca.pem -ca-key=/opt/kubernetes/ca/ssl/ca-key.pem -config=/opt/kubernetes/ca/ssl/ca-config.json -profile=kubernetes /opt/kubernetes/node/ssl/kube-proxy-csr.json | cfssljson -bare kube-proxy"
+    - "mv kube-proxy-key.pem /opt/kubernetes/node/ssl/kube-proxy-key.pem"
+    - "mv kube-proxy.pem /opt/kubernetes/node/ssl/kube-proxy.pem"
+  when: gen_certs_for is defined and gen_certs_for == 'node'
+
+

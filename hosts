@@ -1,0 +1,15 @@
+[ansible-server]
+localhost  ansible_connection=local
+
+[etcd-cluster]
+etcd-host0    ansible_user=ubuntu  ansible_host=192.168.0.184  ansible_hostname=etcd-host0
+etcd-host1    ansible_user=ubuntu  ansible_host=192.168.0.185  ansible_hostname=etcd-host1
+etcd-host2    ansible_user=ubuntu  ansible_host=192.168.0.186  ansible_hostname=etcd-host2
+
+[kube-master]
+master    ansible_user=ubuntu  ansible_host=192.168.0.184
+
+[kube-nodes]
+
+[kube-new-nodes]
+new-node01    ansible_user=ubuntu  ansible_host=192.168.0.183

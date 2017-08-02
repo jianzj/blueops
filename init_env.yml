@@ -1,0 +1,120 @@
+---
+### This playbook is used to prepare environment, including generating certs 
+###   for cluster components, downloading executable files and so on.
+- name: Create working directory
+  hosts: ansible-server
+  tags: ['ansible']
+  tasks:
+  - name: Create dirs for ca, etcd, flanneld, master, node
+    file: path="/opt/kubernetes/{{ item }}" state=directory
+    with_items:
+    - "ca"
+    - "flanneld"
+    - "etcd"
+    - "master"
+    - "node"
+  - name: Create subdirs bin in each working dir
+    file: path="/opt/kubernetes/{{ item }}/bin" state=directory
+    with_items:
+    - "ca"
+    - "flanneld"
+    - "etcd"
+    - "master"
+    - "node"
+  - name: Create subdirs ssl in each working dir
+    file: path="/opt/kubernetes/{{ item }}/ssl" state=directory
+    with_items:
+    - "ca"
+    - "flanneld"
+    - "etcd"
+    - "master"
+    - "node"
+
+- name: Install CFSSL tools
+  hosts: ansible-server
+  tags: ['ansible']
+  tasks:
+  - name: Install cfssl
+    get_url:
+      url: "{{ files.cfssl }}"
+      dest: /opt/kubernetes/ca/bin/cfssl
+      mode: 0755
+      validate_certs: no
+  - name: Install cfssljson
+    get_url:
+      url: "{{ files.cfssljson }}"
+      dest: /opt/kubernetes/ca/bin/cfssljson
+      mode: 0755
+      validate_certs: no
+  - name: Install cfssl-certinfo
+    get_url:
+      url: "{{ files.cfssl_certinfo }}"
+      dest: /opt/kubernetes/ca/bin/cfssl-certinfo
+      mode: 0755
+      validate_certs: no
+
+# CERT PART
+- name: Generate CA key and cert
+  hosts: ansible-server
+  vars:
+    gen_certs_for: "ca"
+  environment:
+    PATH: "/opt/kubernetes/ca/bin:{{ ansible_env.PATH }}"
+  roles:
+  - { role: certs, tags: ['certs'] }
+
+- name: Generate ETCD key and cert
+  hosts: ansible-server
+  vars:
+    gen_certs_for: "etcd"
+  environment:
+    PATH: "/opt/kubernetes/ca/bin:{{ ansible_env.PATH }}"
+  roles:
+  - { role: certs, tags: ['certs'] }
+
+- name: Generate FLANNELD key and cert
+  hosts: ansible-server
+  vars:
+    gen_certs_for: "flanneld"
+  environment:
+    PATH: "/opt/kubernetes/ca/bin:{{ ansible_env.PATH }}"
+  roles:
+  - { role: certs, tags: ['certs'] }
+
+- name: Generate Kubernetes MASTER key and cert
+  hosts: ansible-server
+  vars:
+    gen_certs_for: "master"
+  environment:
+    PATH: "/opt/kubernetes/ca/bin:{{ ansible_env.PATH }}"
+  roles:
+  - { role: certs, tags: ['certs'] }
+
+# BINARY PART
+- name: Download ETCD Binaries
+  hosts: ansible-server
+  vars:
+    bin_file: "etcd"
+  roles:
+  - { role: binaries, tags: ['binaries'] }
+
+- name: Download KUBECTL Binaries
+  hosts: ansible-server
+  vars:
+    bin_file: "kubectl"
+  roles:
+  - { role: binaries, tags: ['binaries'] }
+
+- name: Download FLANNELD Binaries
+  hosts: ansible-server
+  vars:
+    bin_file: "flanneld"
+  roles:
+  - { role: binaries, tags: ['binaries'] }
+  
+- name: Download MASTER Binaries
+  hosts: ansible-server
+  vars:
+    bin_file: "kube_master"
+  roles:
+  - { role: binaries, tags: ['binaries'] }

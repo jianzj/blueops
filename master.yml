@@ -1,0 +1,91 @@
+---
+### ETCD PART ###
+- name: Check if ETCD binary exists
+  hosts: ansible-server
+  tasks:
+    - name: Check if ETCD binary exists
+      stat: path="/opt/kubernetes/etcd/bin/etcd"
+      register: etcd_st
+    - name: Check if ETCDCTL binary exists
+      stat: path="/opt/kubernetes/etcd/bin/etcdctl"
+      register: etcdctl_st
+    - fail:
+        msg: "Please make sure ETCD binary files are ready !"
+      when: not etcd_st.stat.exists or not etcdctl_st.stat.exists
+  tags: ['etcd']
+
+- name: Setup ETCD cluster
+  hosts: etcd-cluster
+  become: true
+  roles:
+  - { role: 'etcd', tags: ['etcd'] }
+
+### FLANNELD PART ###
+- name: Check if FLANNELD binary exists
+  hosts: ansible-server
+  tasks:
+    - name: Check if FLANNELD binary exists
+      stat: path="/opt/kubernetes/flanneld/bin/flanneld"
+      register: flanneld_st
+    - name: Check if script mk-docker-opts.sh exists
+      stat: path="/opt/kubernetes/flanneld/bin/mk-docker-opts.sh"
+      register: fscript_st
+    - fail:
+        msg: "Please make sure FLANNELD binary files are ready !"
+      when: not flanneld_st.stat.exists or not fscript_st.stat.exists
+  tags: ['flanneld']
+
+- name: Create kubernetes subnets into ETCD
+  hosts: ansible-server
+  tasks:
+    - name: Write kubernetes into ETCD
+      shell: |-
+        /opt/kubernetes/etcd/bin/etcdctl --endpoints={{ etcd.endpoints }} \
+        --ca-file=/opt/kubernetes/ca/ssl/ca.pem \
+        --cert-file=/opt/kubernetes/flanneld/ssl/flanneld.pem \
+        --key-file=/opt/kubernetes/flanneld/ssl/flanneld-key.pem set \
+        {{ flanneld.etcd_prefix }}/config \
+        '{ "Network": "{{ kubernetes.cluster_cidr }}", "SubnetLen": 24, "Backend": { "Type": "vxlan" } }'
+      args:
+        executable: /bin/bash
+  tags: ['flanneld']
+
+- name: Setup FLANNELD on MASTER
+  hosts: kube-master
+  become: true
+  roles:
+  - { role: 'flanneld', tags: ['flanneld'] }
+
+### KUBECTL PART ###
+- name: Generate KUBECTL kubeconfig file
+  hosts: ansible-server
+  tasks:
+    - name: Generate KUBECTL kubeconfig
+      shell: "{{ item }}"
+      args:
+        executable: /bin/bash
+      with_items:
+      - "/opt/kubernetes/master/bin/kubectl config set-cluster kubernetes --certificate-authority=/opt/kubernetes/ca/ssl/ca.pem --embed-certs=true --server={{ kubernetes.api_servers }}"
+      - "/opt/kubernetes/master/bin/kubectl config set-credentials admin --client-certificate=/opt/kubernetes/master/ssl/admin.pem --embed-certs=true --client-key=/opt/kubernetes/master/ssl/admin-key.pem"
+      - "/opt/kubernetes/master/bin/kubectl config set-context kubernetes --cluster=kubernetes --user=admin"
+
+    - name: Copy kubeconfig to /opt/kubernetes/master/
+      copy:
+        src: "~/.kube/config"
+        dest: /opt/kubernetes/master/kubeconfig
+  tags: ['kubectl']
+
+- name: Distribute kubeconfig to master
+  hosts: kube-master
+  vars: kube_comp="kubectl"
+  become: true
+  roles:
+  - {'role': 'kubernetes', tags: ['kubernetes', 'master']}
+
+### KUBERNETES MASTER PART ###
+- name: Setup KUBERNETES MASTER
+  hosts: kube-master
+  vars: kube_comp="kube-master"
+  become: true
+  roles:
+  - {'role': 'kubernetes', tags: ['kubernetes', 'master']}

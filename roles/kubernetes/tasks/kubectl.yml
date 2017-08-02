@@ -1,0 +1,35 @@
+---
+- name: Prepare KUBECTL working dirs
+  file: path="{{ item }}" state="directory"
+  with_items:
+  - "/opt/kubernetes/bin"
+  - "/etc/kubernetes/ssl"
+  - "~/.kube"
+
+- name: Prepare KUBECTL binary files
+  copy:
+    src: /opt/kubernetes/master/bin/{{ item }}
+    dest: /opt/kubernetes/bin/{{ item }}
+    mode: 0755
+  with_items:
+  - "kubectl"
+  - "kubefed"
+
+- name: Prepare User admin key and cert
+  copy:
+    src: /opt/kubernetes/master/ssl/{{ item }}
+    dest: /etc/kubernetes/ssl/{{ item }}
+    mode: 0644
+  with_items:
+  - "admin.pem"
+  - "admin-key.pem"
+
+- name: Modify User admin key permission
+  file: path="/etc/kubernetes/ssl/admin-key.pem" mode=0600
+
+- name: Prepare KUBECTL config file
+  copy:
+    src: /opt/kubernetes/master/kubeconfig
+    dest: "~/.kube/config"
+    mode: 0600
+

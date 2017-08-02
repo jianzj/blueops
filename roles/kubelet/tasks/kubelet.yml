@@ -1,0 +1,39 @@
+---
+- name: Prepare executable files for kubelet and kube-proxy
+  shell: {{ item }}
+  with_items:
+    - "wget https://dl.k8s.io/v1.6.2/kubernetes-server-linux-amd64.tar.gz"
+    - "tar -xzvf kubernetes-server-linux-amd64.tar.gz"
+    - "mv kubernetes/server/bin/kubelet /opt/kubernetes/bin/kubelet"
+    - "mv kubernetes/server/bin/kube-proxy /opt/kubernetes/bin/kube-proxy"
+  args:
+    executable: /bin/bash
+
+- name: Generate bootstrap.kubeconfig file
+  shell: {{ item }}
+  with_items: 
+    - "kubectl config set-cluster kubernetes --certificate-authority=/etc/kubernetes/ssl/ca.pem --embed-certs=true --server={{ kubernetes.api_server }} --kubeconfig=bootstrap.kubeconfig"
+    - "kubectl config set-credentials kubelet-bootstrap --token=${BOOTSTRAP_TOKEN} --kubeconfig=bootstrap.kubeconfig"
+    - "kubectl config set-context default --cluster=kubernetes --user=kubelet-bootstrap --kubeconfig=bootstrap.kubeconfig"
+    - "kubectl config use-context default --kubeconfig=bootstrap.kubeconfig"
+    - "mv bootstrap.kubeconfig /etc/kubernetes/"
+  args:
+    executable: /bin/bash
+
+- name: Create /var/lib/kubelet directory for Kubelet
+  file:
+    path: /var/lib/kubelet
+    state: directory
+
+- name: Prepare Kubelet system unit file
+  template:
+    src: config/kubelet.service
+    dest: /etc/systemd/system/kubelet.service
+
+- name: Load, enable and start service Kubelet
+  systemd:
+    name: kubelet
+    enabled: yes
+    state: started
+    daemon_reload: yes
+          

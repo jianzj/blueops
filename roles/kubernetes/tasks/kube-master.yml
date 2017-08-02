@@ -1,0 +1,86 @@
+---
+### Common PART ###
+- name: Prepare KUBERNETES working dirs
+  file: path="{{ item }}" state=directory
+  with_items:
+  - "/etc/kubernetes/ssl"
+  - "/opt/kubernetes/bin"
+
+- name: Prepare CA key and cert
+  copy:
+    src: "/opt/kubernetes/ca/ssl/{{ item }}"
+    dest: "/etc/kubernetes/ssl/{{ item }}"
+    mode: 0644
+  with_items:
+  - "ca.pem"
+  - "ca-key.pem"
+
+- name: Modify CA key permission
+  file: path="/etc/kubernetes/ssl/ca-key.pem" mode=0600
+
+- name: Prepare KUBERNETES binary files
+  copy:
+    src: "/opt/kubernetes/master/bin/{{ item }}"
+    dest: "/opt/kubernetes/bin/{{ item }}"
+    mode: 0755
+  with_items:
+  - "kube-apiserver"
+  - "kube-controller-manager"
+  - "kube-scheduler"
+
+### API Server PART ###
+- name: Prepare BOOTSTRAP_TOKEN
+  template:
+    src: config/token.csv
+    dest: "/etc/kubernetes/token.csv"
+
+- name: Prepare KUBERNETES key and cert
+  copy:
+    src: "/opt/kubernetes/master/ssl/{{ item }}"
+    dest: "/etc/kubernetes/ssl/{{ item }}"
+    mode: 0644
+  with_items:
+  - "kubernetes.pem"
+  - "kubernetes-key.pem"
+
+- name: Modify KUBERNETES key permission
+  file: path="/etc/kubernetes/ssl/kubernetes-key.pem" mode=0600
+
+- name: Prepare KUBE_APISERVER systemd unit file
+  template:
+    src: config/kube-apiserver.service
+    dest: /etc/systemd/system/kube-apiserver.service
+
+- name: Setup KUBE-APISERVER
+  systemd:
+    name: kube-apiserver
+    enabled: yes
+    daemon-reload: yes
+    state: started
+  
+### Controller Manager PART ###
+- name: Prepare KUBE_CONTROLLER_MANAGER systemd unit file
+  template:
+    src: config/kube-controller-manager.service
+    dest: /etc/systemd/system/kube-controller-manager.service
+
+- name: Setup KUBE-CONTROLLER-MANAGER
+  systemd:
+    name: kube-controller-manager
+    enabled: yes
+    daemon-reload: yes
+    state: started
+
+### Scheduler PART ###
+- name: Prepare KUBE_SCHEDULER systemd unit file
+  template:
+    src: config/kube-scheduler.service
+    dest: /etc/systemd/system/kube-scheduler.service
+
+- name: Setup KUBE-SCHEDULER
+  systemd:
+    name: kube-scheduler
+    enabled: yes
+    daemon-reload: yes
+    state: started
+  

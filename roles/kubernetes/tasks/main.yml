@@ -1,0 +1,6 @@
+---
+- include: kubectl.yml
+  when: kube_comp is defined and kube_comp == "kubectl"
+
+- include: kube-master.yml
+  when: kube_comp is defined and kube_comp == "kube-master"

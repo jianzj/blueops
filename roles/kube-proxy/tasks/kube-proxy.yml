@@ -1,0 +1,44 @@
+---
+- name: Copy cert reqeust kube-proxy-csr.json to /etc/kubernetes/ssl
+  template:
+    src: config/kube-proxy-csr.json
+    dest: /etc/kubernetes/ssl/kube-proxy-csr.json
+
+- name: Generate client cert and key for kube-proxy
+  shell: {{ item }}
+  with_items:
+    - "cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem -ca-key=/etc/kubernetes/ssl/ca-key.pem -config=/etc/kubernetes/ssl/ca-config.json -profile=kubernetes /etc/kubernetes/ssl/kube-proxy-csr.json | cfssljson -bare kube-proxy"
+    - "mv kube-proxy*.pem /etc/kubernetes/ssl/"
+  args:
+    executable: /bin/bash
+
+- name: Generate cert and private key for flanneld
+  shell: "cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem -ca-key=/etc/kubernetes/ssl/ca-key.pem -config=/etc/kubernetes/ssl/ca-config.json -profile=kubernetes /etc/flanneld/ssl/flanneld-csr.json | cfssljson -bare flanneld"
+  args:
+    executable: /bin/bash
+
+- name: Generate kube-proxy.kubeconfig file
+  shell: {{ item }}
+  with_items:
+    - "kubectl config set-cluster kubernetes --certificate-authority=/etc/kubernetes/ssl/ca.pem --embed-certs=true --server={{ kubernetes.api_server }} --kubeconfig=kube-proxy.kubeconfig"
+    - "kubectl config set-credentials kube-proxy --client-certificate=/etc/kubernetes/ssl/kube-proxy.pem --client-key=/etc/kubernetes/ssl/kube-proxy-key.pem --embed-certs=true --kubeconfig=kube-proxy.kubeconfig"
+    - "kubectl config set-context default --cluster=kubernetes --user=kube-proxy --kubeconfig=kube-proxy.kubeconfig"
+    - "kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig"
+    - "mv kube-proxy.kubeconfig /etc/kubernetes/"
+
+- name: Create /var/lib/kube-proxy directory for kube-proxy
+  file:
+    path: /var/lib/kube-proxy
+    state: directory
+
+- name: Generate kube-proxy systemd unit file
+  template:
+    src: config/kube-proxy.service
+    dest: /etc/systemd/system/kube-proxy.service
+
+- name: Load, enable and start service kube-proxy
+  systemd:
+    name: kube-proxy
+    enabled: yes
+    state: started
+    daemon_reload: yes

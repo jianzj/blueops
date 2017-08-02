@@ -1,0 +1,43 @@
+---
+- name: Install packages to allow apt to use a repository over HTTPS
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - "apt-transport-https"
+    - "ca-certificates"
+    - "curl"
+    - "software-properties-common"
+
+- name: Add Docker’s official GPG key
+  apt_key:
+    url: "https://download.docker.com/linux/ubuntu/gpg"
+    state: present
+
+- name: Register system release
+  command: lsb_release -cs
+  register: lsb_release
+
+- name: Add Docker installation repository
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ lsb_release.stdout }} stable
+
+- name: Install Docker package
+  apt:
+    name: docker-ce
+    state: present
+    update_cache: yes
+
+# The following two tasks are used as a workaround to customize DOCKER_OPTS
+- name: Replace Docker service systemd unit file with customized one
+  template:
+    src: config/docker.service
+    dest: /lib/systemd/system/docker.service
+
+- name: Reload and restart docker service
+  systemd:
+    name: docker
+    enabled: yes
+    state: restarted
+    daemon_reload: yes

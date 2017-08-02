@@ -1,0 +1,51 @@
+---
+- name: Prepare ETCD working dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+  - "/opt/etcd/bin"
+  - "/etc/etcd/ssl"
+  - "/var/lib/etcd"
+  - "/etc/kubernetes/ssl"
+
+- name: Copy ETCD binary files
+  copy:
+    src: "/opt/kubernetes/etcd/bin/{{ item }}"
+    dest: "/opt/etcd/bin/{{ item }}"
+    mode: 0755
+  with_items:
+  - "etcd"
+  - "etcdctl"
+
+- name: Copy ETCD key and cert
+  copy: 
+    src: "/opt/kubernetes/etcd/ssl/{{ item }}"
+    dest: "/etc/etcd/ssl/{{ item }}"
+    mode: 0644
+  with_items:
+  - "etcd-key.pem"
+  - "etcd.pem"
+  
+- name: Change ETCD key permission
+  file:
+    path: "/etc/etcd/ssl/etcd-key.pem"
+    mode: 0600
+
+- name: Copy CA key and cert
+  copy: 
+    src: "/opt/kubernetes/ca/ssl/ca.pem"
+    dest: "/etc/kubernetes/ssl/ca.pem"
+    mode: 0644
+
+- name: Create ETCD systemd unit file
+  template:
+    src: config/etcd.service
+    dest: /etc/systemd/system/etcd.service
+
+- name: Install ETCD
+  systemd:
+    name: etcd
+    enabled: yes
+    daemon_reload: yes
+    state: started

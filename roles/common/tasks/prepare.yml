@@ -1,0 +1,48 @@
+---
+- name: Create directory for tools
+  file:
+    path: /opt/tools/bin
+    state: directory
+
+- name: Install cfssl tools
+  copy:
+    src: "bin/cfssl/{{ item }}"
+    dest: "/opt/tools/bin/{{ item }}"
+    mode: 0755
+  with_items:
+    - "cfssl"
+    - "cfssljson"
+    - "cfssl-certinfo"
+
+- name: Create kubernetes configuration directory
+  file:
+    path: /etc/kubernetes/ssl
+    state: directory
+
+- name: Install CA certificate
+  template:
+    src: "{{ item }}"
+    dest: /etc/kubernetes/ssl/
+    mode: 0644
+  with_items:
+    - "ca/ca-config.json"
+    - "ca/ca.pem"
+
+- name: Copy CA private key 
+  template:
+    src: ca/ca-key.pem
+    dest: /etc/kubernetes/ssl/ca-key.pem
+    mode: 0600
+
+- name: Create directory for kubernetes
+  file:
+    path: "/opt/kubernetes/{{ item }}"
+    state: directory
+  with_items:
+    - "bin"
+
+- name: Update PATH
+  lineinfile:
+    path: "~/.bashrc"
+    line: "export PATH=/opt/tools/bin:/opt/kubernetes/bin:$PATH"
+    state: present

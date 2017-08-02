@@ -1,0 +1,61 @@
+---
+- name: Prepare system environment
+  hosts: kube-new-nodes
+  remote_user: root
+  roles:
+    - common
+
+- name: Install kubectl
+  hosts: kube-new-nodes
+  remote_user: root
+  roles:
+    - kubectl
+
+- name: Install Flanneld
+  hosts: kube-new-nodes
+  remote_user: root
+  roles:
+    - flanneld
+  environment:
+    PATH: '/opt/tools/bin:{{ ansible_env.PATH }}'
+
+- name: Install Docker
+  hosts: kube-new-nodes
+  remote_user: root
+  roles:
+    - docker
+
+- name: Install Kubelet
+  hosts: kube-new-nodes
+  remote_user: root
+  roles:
+    - kubelet
+  environment:
+    PATH: '/opt/tools/bin:{{ ansible_env.PATH }}'
+
+- name: Approve new nodes kubelet service cert request
+  hosts: master
+  remote_user: root
+  environment:
+    PATH: "/root/tools:$PATH"
+  tasks:
+    - name: Gather all csrs with Pending status
+      shell: kubectl get csr | grep 'Pending' | awk '{ print $1 }'
+      args:
+        executable: /bin/bash
+      register: filtered_csrs
+    - name: Approve csrs
+      shell: kubectl certificate approve {{ item }}
+      args:
+        executable: /bin/bash
+      with_items: 
+        - "{{ filtered_csrs.stdout_lines }}"
+
+- name: Install Kube-Proxy
+  hosts: kube-new-nodes
+  remote_user: root
+  roles:
+    - kube-proxy
+  environment:
+    PATH: '/opt/tools/bin:{{ ansible_env.PATH }}'
+    
